@@ -33,6 +33,7 @@ module.exports = {
     "import/order": [ "error" ],
     "import/prefer-default-export": "off",
     "no-console": "off",
-    "@typescript-eslint/camelcase": "off"
+    "@typescript-eslint/camelcase": "off",
+    "max-len": "off"
   }
 }
