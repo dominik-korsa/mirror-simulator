@@ -1,136 +1,119 @@
 import * as p5 from 'p5';
-import * as utils from '../utils/index';
+// import * as utils from '../utils/index';
+import { RadioElement } from '../types';
 
-enum DragElement {
-  dot
+type MirrorType = 'concave' | 'convex';
+
+interface MirrorTypeRadioElement extends RadioElement {
+  option(label: string, value: MirrorType | undefined): HTMLInputElement;
+  value(value: MirrorType): RadioElement;
+  value(): MirrorType;
 }
 
 export default class Sketch {
-  private x = 0;
-
-  private y = 0;
-
-  private width = 1100;
-
-  private height = 600;
+  private radius = 250;
 
   private s: p5;
 
-  private dragElement: DragElement | null = null;
+  // private mirrorType: MirrorType = 'convex';
+
+  private canvas: p5.Renderer | undefined;
+
+  private mirrorTypeRadio: MirrorTypeRadioElement | undefined;
 
   constructor(s: p5) {
     this.s = s;
 
     this.s.setup = (): void => {
-      this.s.createCanvas(this.width, this.height);
+      this.canvas = this.s.createCanvas(this.s.windowWidth - 64, this.s.windowHeight - 256);
+      this.canvas?.id('main-canvas');
 
-      this.x = this.width / 4;
-      this.y = this.height / 2;
+      this.mirrorTypeRadio = this.s.createRadio() as MirrorTypeRadioElement;
+      this.mirrorTypeRadio.option('Wklęsłe', 'convex');
+      this.mirrorTypeRadio.option('Wypukłe', 'concave');
+      this.mirrorTypeRadio.value('convex');
+    };
+
+    this.s.windowResized = (): void => {
+      this.s.resizeCanvas(this.s.windowWidth - 64, this.s.windowHeight - 256);
     };
 
     this.s.draw = (): void => {
       this.s.background(this.s.color('#cfd8dc'));
 
-      const dragCandidateElement = this.getDragCandidateElement();
-
-      if ((this.dragElement ?? dragCandidateElement) !== null) {
-        this.s.cursor('grab');
-      } else {
-        this.s.cursor('default');
-      }
-
       this.drawMirror();
 
-      [-45, -22.5, 0, 22.5, 45].forEach((deg) => {
-        this.drawReflectionLine(deg);
-        this.drawExtensionLine(deg);
-        this.drawBaseLine(deg);
-      });
+      this.s.stroke(this.s.color('#444'));
+      this.s.strokeWeight(1);
+      this.s.line(0, this.s.height / 2, this.s.width, this.s.height / 2);
 
-      this.drawDot((this.dragElement ?? dragCandidateElement) === DragElement.dot);
+      this.s.noStroke();
+      this.s.fill(this.s.color('#000'));
 
-      this.drawExtensionDot();
-    };
-
-    this.s.mousePressed = (): void => {
-      const dragCandidateElement = this.getDragCandidateElement();
-      if (dragCandidateElement !== null) {
-        this.dragElement = dragCandidateElement;
+      let radiusCenterX;
+      let focusX;
+      if (this.mirrorTypeRadio?.value() === 'concave') {
+        radiusCenterX = this.s.width * (2 / 3);
+        focusX = radiusCenterX - this.radius / 2;
+      } else {
+        radiusCenterX = this.s.width * (1 / 3);
+        focusX = radiusCenterX + this.radius / 2;
       }
+
+      this.s.circle(radiusCenterX, this.s.height / 2, 6);
+      this.s.text('O', radiusCenterX + 8, this.s.height / 2 - 8);
+
+      this.s.circle(focusX, this.s.height / 2, 6);
+      this.s.text('F', focusX + 8, this.s.height / 2 - 8);
     };
-
-    this.s.mouseReleased = (): void => {
-      this.dragElement = null;
-    };
-  }
-
-  private getDragCandidateElement(): DragElement | null {
-    if (utils.distanceSquared(this.x, this.y, this.s.mouseX, this.s.mouseY) <= 16 ** 2) {
-      return DragElement.dot;
-    }
-
-    return null;
   }
 
   private drawMirror(): void {
-    this.s.noStroke();
+    this.s.noFill();
+    this.s.strokeCap(this.s.SQUARE);
 
-    this.s.fill(this.s.color('#64b5f6'));
-    this.s.rect(this.width / 2 + 1, 0, 8, this.height);
-
-    this.s.fill(this.s.color('#1565c0'));
-    this.s.rect(this.width / 2 - 1, 0, 2, this.height);
-  }
-
-  private drawDot(drag: boolean): void {
-    this.s.fill(this.s.color('#f44336'));
-
-    if (drag) {
-      this.s.stroke(this.s.color('#03a9f4'));
-      this.s.strokeWeight(2);
+    this.s.stroke(this.s.color('#64b5f6'));
+    this.s.strokeWeight(8);
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      this.s.arc(
+        this.s.width * (2 / 3),
+        this.s.height / 2,
+        this.radius * 2 + 9,
+        this.radius * 2 + 9,
+        Math.PI * (2 / 3),
+        Math.PI * (4 / 3),
+      );
     } else {
-      this.s.noStroke();
+      this.s.arc(
+        this.s.width * (1 / 3),
+        this.s.height / 2,
+        this.radius * 2 - 9,
+        this.radius * 2 - 9,
+        Math.PI * (5 / 3),
+        Math.PI * (7 / 3),
+      );
     }
 
-    this.s.ellipse(this.x, this.y, drag ? 16 : 8, drag ? 16 : 8);
-
-    if (this.dragElement === DragElement.dot) {
-      this.x = Math.max(16, Math.min(this.s.mouseX, this.width / 2 - 16));
-      this.y = Math.max(16, Math.min(this.s.mouseY, this.height - 16));
+    this.s.stroke(this.s.color('#1565c0'));
+    this.s.strokeWeight(2);
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      this.s.arc(
+        this.s.width * (2 / 3),
+        this.s.height / 2,
+        this.radius * 2,
+        this.radius * 2,
+        Math.PI * (2 / 3),
+        Math.PI * (4 / 3),
+      );
+    } else {
+      this.s.arc(
+        this.s.width * (1 / 3),
+        this.s.height / 2,
+        this.radius * 2,
+        this.radius * 2,
+        Math.PI * (5 / 3),
+        Math.PI * (7 / 3),
+      );
     }
-  }
-
-  private drawExtensionDot(): void {
-    this.s.noStroke();
-    this.s.fill(this.s.color('#f44336'));
-    this.s.ellipse(this.width - this.x, this.y, 8, 8);
-  }
-
-  private drawBaseLine(deg: number): void {
-    const tan = Math.tan((Math.PI / 180) * deg);
-
-    this.s.stroke(this.s.color('#000'));
-    this.s.strokeWeight(1);
-
-    this.s.line(this.x, this.y, this.width / 2, this.y + (this.width / 2 - this.x) * tan);
-  }
-
-  private drawExtensionLine(deg: number): void {
-    const tan = Math.tan((Math.PI / 180) * deg);
-
-    this.s.stroke(this.s.color('#673ab7'));
-    this.s.strokeWeight(1);
-
-    this.s.line(this.width / 2, this.y + (this.width / 2 - this.x) * tan, this.width, this.y - this.x * tan);
-  }
-
-  private drawReflectionLine(deg: number): void {
-    const tan = Math.tan((Math.PI / 180) * deg);
-
-    // this.s.stroke(this.s.color('#009688'));
-    this.s.stroke(this.s.color('#333'));
-    this.s.strokeWeight(1);
-
-    this.s.line(this.width / 2, this.y + (this.width / 2 - this.x) * tan, 0, this.y + (this.width - this.x) * tan);
   }
 }
