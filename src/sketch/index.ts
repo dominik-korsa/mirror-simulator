@@ -35,13 +35,16 @@ export default class Sketch {
     this.s.setup = (): void => {
       const title = this.s.createElement('h1');
       title.html('Symulator zwierciadeł sferycznych');
+      title.id('title');
       const subtitle = this.s.createElement('h3');
       subtitle.html('Przybliżenie dla promieni w pobliżu osi optycznej');
+      subtitle.id('subtitle');
 
       this.canvas = this.s.createCanvas(this.s.windowWidth - 64, this.s.windowHeight - 256);
       this.canvas?.id('main-canvas');
 
       this.mirrorTypeRadio = this.s.createRadio() as MirrorTypeRadioElement;
+      this.mirrorTypeRadio.id('mirror-type-radio');
       this.mirrorTypeRadio.option('Wklęsłe', 'concave');
       this.mirrorTypeRadio.option('Wypukłe', 'convex');
       this.mirrorTypeRadio.value('concave');
@@ -52,7 +55,7 @@ export default class Sketch {
     };
 
     this.s.draw = (): void => {
-      this.s.background(this.s.color('#cfd8dc'));
+      this.s.background(this.s.color('#fafafa'));
 
       this.drawMirror();
 

@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <title>Zwierciadło płaskie</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Caladea&display=swap');
+
     body {
       margin: 0;
       height: 100vh;
@@ -11,6 +13,37 @@
       align-items: center;
       justify-content: center;
       flex-direction: column;
+      background-color: #212121;
+      color: white;
+      font-family: 'Caladea', sans-serif;
+    }
+
+    #title {
+      margin: 0;
+      margin-bottom: 8px;
+      font-weight: 400;
+      font-family: 'Caladea', sans-serif;
+      letter-spacing: 2px;
+    }
+
+    #subtitle {
+      margin: 0;
+      margin-bottom: 24px;
+      font-weight: 400;
+      font-family: 'Caladea', sans-serif;
+      letter-spacing: 1px;
+    }
+
+    #main-canvas {
+      box-shadow:
+        0 5px 5px -3px rgba(0, 0, 0, 0.2),
+        0 8px 10px 1px rgba(0, 0, 0, 0.14),
+        0 3px 14px 2px rgba(0, 0, 0, 0.12);
+      border-radius: 4px;
+    }
+
+    #mirror-type-radio {
+      margin-top: 16px;
     }
   </style>
 </head>
