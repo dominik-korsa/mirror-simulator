@@ -11,16 +11,21 @@ interface MirrorTypeRadioElement extends RadioElement {
 }
 
 export default class Sketch {
-  private circleRadiusWidthPercent = 0.3;
+  private circleRadiusWidthPercent = 0.5;
 
   private get circleRadius(): number {
     return this.s.width * this.circleRadiusWidthPercent;
   }
 
-  private circleXWidthPercent = 1 / 2;
+  private concaveCircleXWidthPercent = 3 / 4;
+
+  private convexCircleXWidthPercent = 1 / 4;
 
   private get circleX(): number {
-    return this.s.width * this.circleXWidthPercent;
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      return this.s.width * this.concaveCircleXWidthPercent;
+    }
+    return this.s.width * this.convexCircleXWidthPercent;
   }
 
   private s: p5;
@@ -28,6 +33,14 @@ export default class Sketch {
   private canvas: p5.Renderer | undefined;
 
   private mirrorTypeRadio: MirrorTypeRadioElement | undefined;
+
+  private get objectX(): number {
+    return this.circleX;
+  }
+
+  private get objectY(): number {
+    return this.s.height * (1 / 2) + 32;
+  }
 
   constructor(s: p5) {
     this.s = s;
@@ -66,7 +79,12 @@ export default class Sketch {
       this.s.noStroke();
       this.s.fill(this.s.color('#000'));
 
-      const focusX = this.getCircleX() - this.circleRadius / 2;
+      let focusX;
+      if (this.mirrorTypeRadio?.value() === 'concave') {
+        focusX = this.circleX - this.circleRadius / 2;
+      } else {
+        focusX = this.circleX + this.circleRadius / 2;
+      }
 
       this.s.circle(this.circleX, this.s.height / 2, 6);
       this.s.text('O', this.circleX + 8, this.s.height / 2 - 8);
@@ -74,37 +92,22 @@ export default class Sketch {
       this.s.circle(focusX, this.s.height / 2, 6);
       this.s.text('F', focusX + 8, this.s.height / 2 - 8);
 
-      this.s.circle(this.circleX - this.circleRadius, this.s.height / 2, 6);
-      this.s.text('S', this.circleX - this.circleRadius + 8, this.s.height / 2 - 8);
-
-      const objectX = this.circleX - this.circleRadius + 80;
-      const objectY = this.s.height * (1 / 2) - 32;
-
-      this.drawConcaveRays(objectX, objectY);
-
-      this.s.circle(objectX, objectY, 6);
-
-      const concaveCrossPointX = this.getConcaveCrossPointX(objectX);
-      const concaveScale = this.getConcaveScale(objectX, concaveCrossPointX);
-      const concaveCrossPointY = (this.s.height / 2 - objectY) * concaveScale + this.s.height / 2;
-      this.dashedLine(
-        objectX,
-        objectY,
-        objectX,
+      this.s.circle(
+        this.mirrorTypeRadio?.value() === 'concave' ? this.circleX - this.circleRadius : this.circleX + this.circleRadius,
         this.s.height / 2,
-        5,
+        6,
       );
-      this.s.line(
-        concaveCrossPointX,
-        this.s.height / 2,
-        concaveCrossPointX,
-        concaveCrossPointY,
+      this.s.text(
+        'S',
+        this.mirrorTypeRadio?.value() === 'concave' ? this.circleX - this.circleRadius + 8 : this.circleX + this.circleRadius + 8,
+        this.s.height / 2 - 8,
       );
+
+      this.drawConcaveRays(this.objectX, this.objectY);
+
+      this.drawObject();
+      this.drawImage();
     };
-  }
-
-  private getCircleX(): number {
-    return this.s.width * this.circleXWidthPercent;
   }
 
   private drawMirror(): void {
@@ -250,5 +253,65 @@ export default class Sketch {
     this.s.line(reflectionPointX, crossPointY, this.s.width, crossPointY);
     this.dashedLine(0, crossPointY, reflectionPointX, crossPointY, 5);
     this.s.line(reflectionPointX, crossPointY, x, y);
+  }
+
+  private drawObject(): void {
+    this.s.fill(this.s.color('#fff'));
+    this.s.stroke(this.s.color('#d84315'));
+    this.s.strokeWeight(2);
+    this.s.strokeCap(this.s.SQUARE);
+
+    this.s.line(this.objectX, this.s.height / 2, this.objectX, this.objectY);
+    if (this.s.height / 2 > this.objectY) {
+      this.s.triangle(
+        this.objectX - 4,
+        this.objectY + 7,
+        this.objectX,
+        this.objectY,
+        this.objectX + 4,
+        this.objectY + 7,
+      );
+    } else {
+      this.s.triangle(
+        this.objectX + 4,
+        this.objectY - 7,
+        this.objectX,
+        this.objectY,
+        this.objectX - 4,
+        this.objectY - 7,
+      );
+    }
+  }
+
+  private drawImage(): void {
+    this.s.fill(this.s.color('#fff'));
+    this.s.stroke(this.s.color('#d84315'));
+    this.s.strokeWeight(2);
+    this.s.strokeCap(this.s.SQUARE);
+
+    const concaveCrossPointX = this.getConcaveCrossPointX(this.objectX);
+    const concaveScale = this.getConcaveScale(this.objectX, concaveCrossPointX);
+    const concaveCrossPointY = (this.s.height / 2 - this.objectY) * concaveScale + this.s.height / 2;
+
+    this.dashedLine(concaveCrossPointX, this.s.height / 2, concaveCrossPointX, concaveCrossPointY, 3);
+    if (this.s.height / 2 > concaveCrossPointY) {
+      this.s.triangle(
+        concaveCrossPointX - 4,
+        concaveCrossPointY + 7,
+        concaveCrossPointX,
+        concaveCrossPointY,
+        concaveCrossPointX + 4,
+        concaveCrossPointY + 7,
+      );
+    } else {
+      this.s.triangle(
+        concaveCrossPointX + 4,
+        concaveCrossPointY - 7,
+        concaveCrossPointX,
+        concaveCrossPointY,
+        concaveCrossPointX - 4,
+        concaveCrossPointY - 7,
+      );
+    }
   }
 }
