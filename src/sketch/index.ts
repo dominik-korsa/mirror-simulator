@@ -330,7 +330,7 @@ export default class Sketch {
 
     if (this.mirrorTypeRadio?.value() === 'convex') {
       const focusX = this.circleX + this.circleRadius / 2;
-      this.s.stroke('#000');
+      this.s.stroke('#333');
       this.dashedLine(reflectionPointX, crossPointY, focusX, this.s.height / 2, 3);
     }
   }
