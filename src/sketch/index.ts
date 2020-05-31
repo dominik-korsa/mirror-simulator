@@ -110,7 +110,11 @@ export default class Sketch {
           this.convexCircleXWidthPercent = Math.max(0.05, Math.min(0.95, this.s.mouseX / this.s.width));
         }
       } else if (this.draggedElement === 'circle-radius') {
-        this.circleRadiusWidthPercent = Math.max(0.05, (this.circleX - Math.max(0.02 * this.s.width, this.s.mouseX)) / this.s.width);
+        if (this.mirrorTypeRadio?.value() === 'concave') {
+          this.circleRadiusWidthPercent = Math.max(0.05, (this.circleX - Math.max(0.02 * this.s.width, this.s.mouseX)) / this.s.width);
+        } else {
+          this.circleRadiusWidthPercent = Math.max(0.05, (Math.min(0.98 * this.s.width, this.s.mouseX) - this.circleX) / this.s.width);
+        }
       } else if (this.draggedElement === 'object') {
         this.objectXWidthPercent = Math.max(0.05, Math.min(0.95, this.s.mouseX / this.s.width));
         this.objectYWidthPercent = Math.max(0.05, Math.min(0.95, this.s.mouseY / this.s.height));
@@ -124,10 +128,10 @@ export default class Sketch {
 
       this.drawObject(dragHighlightElement === 'object');
 
-      const reflectionPointX = this.getConcaveReflectionPointX(this.objectY);
+      const reflectionPointX = this.getReflectionPointX(this.objectY);
 
       if (this.objectX > reflectionPointX + 4) {
-        this.drawConcaveRays(this.objectX, this.objectY);
+        this.drawRays(this.objectX, this.objectY);
         this.drawImage();
       }
 
@@ -190,17 +194,34 @@ export default class Sketch {
     }
   }
 
-  private getConcaveReflectionPointX(y: number): number {
+  private getReflectionPointX(y: number): number {
     const triangleBase = Math.sqrt(this.circleRadius ** 2 - (this.s.height / 2 - y) ** 2);
-    return this.circleX - triangleBase;
+
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      return this.circleX - triangleBase;
+    }
+    return this.circleX + triangleBase;
   }
 
-  private getConcaveCrossPointX(objectX: number): number {
-    return 1 / (1 / (this.circleRadius / 2) - 1 / (objectX - this.circleX + this.circleRadius)) + this.circleX - this.circleRadius;
+  private getCrossPointX(objectX: number): number {
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      return 1 / (
+        1 / (this.circleRadius / 2)
+        - 1 / (objectX - this.circleX + this.circleRadius)
+      ) + this.circleX - this.circleRadius;
+    }
+    return this.circleX + this.circleRadius - 1 / (
+      1 / (this.circleRadius / 2)
+      + 1 / (objectX - this.circleX - this.circleRadius)
+    );
   }
 
   private getConcaveScale(objectX : number, crossPointX: number): number {
     return (crossPointX - this.circleX + this.circleRadius) / (objectX - this.circleX + this.circleRadius);
+  }
+
+  private getConvexScale(objectX : number, crossPointX: number): number {
+    return (this.circleX + this.circleRadius - crossPointX) / (objectX - this.circleX - this.circleRadius);
   }
 
   private dashedLine(x1: number, y1: number, x2: number, y2: number, spacing: number): void {
@@ -230,14 +251,14 @@ export default class Sketch {
     }
   }
 
-  private drawConcaveRays(x: number, y: number): void {
-    this.drawConcaveParallelRay(x, y);
-    this.drawConcaveSymmetricalRay(x, y);
-    this.drawConcaveFocusRay(x, y);
+  private drawRays(x: number, y: number): void {
+    this.drawParallelRay(x, y);
+    this.drawSymmetricalRay(x, y);
+    this.drawFocusRay(x, y);
   }
 
-  private drawConcaveParallelRay(x: number, y: number): void {
-    const reflectionPointX = this.getConcaveReflectionPointX(y);
+  private drawParallelRay(x: number, y: number): void {
+    const reflectionPointX = this.getReflectionPointX(y);
 
     this.s.noFill();
     this.s.stroke('#1b5e20');
@@ -246,7 +267,12 @@ export default class Sketch {
 
     this.s.line(x, y, reflectionPointX, y);
 
-    const focusX = this.circleX - this.circleRadius / 2;
+    let focusX;
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      focusX = this.circleX - this.circleRadius / 2;
+    } else {
+      focusX = this.circleX + this.circleRadius / 2;
+    }
 
     const tan = (this.s.height / 2 - y) / (focusX - reflectionPointX);
 
@@ -255,35 +281,54 @@ export default class Sketch {
     this.dashedLine(reflectionPointX, y, 0, y - (reflectionPointX) * tan, 5);
   }
 
-  private drawConcaveSymmetricalRay(x: number, y: number): void {
+  private drawSymmetricalRay(x: number, y: number): void {
     this.s.noFill();
     this.s.stroke('#303f9f');
     this.s.strokeCap(this.s.SQUARE);
     this.s.strokeWeight(1);
 
-    this.s.line(x, y, this.circleX - this.circleRadius, this.s.height / 2);
+    let circleAxisCrossX;
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      circleAxisCrossX = this.circleX - this.circleRadius;
+    } else {
+      circleAxisCrossX = this.circleX + this.circleRadius;
+    }
 
-    const tan = (y - this.s.height / 2) / (this.circleX - this.circleRadius - x);
+    this.s.line(x, y, circleAxisCrossX, this.s.height / 2);
 
-    this.s.line(this.circleX - this.circleRadius, this.s.height / 2, this.s.width, this.s.height / 2 + (this.s.width - this.circleX + this.circleRadius) * tan);
+    const tan = (y - this.s.height / 2) / (circleAxisCrossX - x);
 
-    this.dashedLine(this.circleX - this.circleRadius, this.s.height / 2, 0, this.s.height / 2 - (this.circleX - this.circleRadius) * tan, 5);
+    this.s.line(circleAxisCrossX, this.s.height / 2, this.s.width, this.s.height / 2 + (this.s.width - circleAxisCrossX) * tan);
+
+    this.dashedLine(circleAxisCrossX, this.s.height / 2, 0, this.s.height / 2 - (circleAxisCrossX) * tan, 5);
   }
 
-  private drawConcaveFocusRay(x: number, y: number): void {
+  private drawFocusRay(x: number, y: number): void {
     this.s.noFill();
     this.s.stroke('#d32f2f');
     this.s.strokeCap(this.s.SQUARE);
     this.s.strokeWeight(1);
 
-    const crossPointX = this.getConcaveCrossPointX(x);
-    const scale = this.getConcaveScale(x, crossPointX);
-    const crossPointY = (this.s.height / 2 - y) * scale + this.s.height / 2;
-    const reflectionPointX = this.getConcaveReflectionPointX(crossPointY);
+    const crossPointX = this.getCrossPointX(x);
+    let crossPointY: number;
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      const scale = this.getConcaveScale(x, crossPointX);
+      crossPointY = (this.s.height / 2 - y) * scale + this.s.height / 2;
+    } else {
+      const scale = this.getConvexScale(x, crossPointX);
+      crossPointY = (y - this.s.height / 2) * scale + this.s.height / 2;
+    }
+    const reflectionPointX = this.getReflectionPointX(crossPointY);
 
     this.s.line(reflectionPointX, crossPointY, this.s.width, crossPointY);
     this.dashedLine(0, crossPointY, reflectionPointX, crossPointY, 5);
     this.s.line(reflectionPointX, crossPointY, x, y);
+
+    if (this.mirrorTypeRadio?.value() === 'convex') {
+      const focusX = this.circleX + this.circleRadius / 2;
+      this.s.stroke('#000');
+      this.dashedLine(reflectionPointX, crossPointY, focusX, this.s.height / 2, 3);
+    }
   }
 
   private drawObject(drag = false): void {
@@ -320,28 +365,34 @@ export default class Sketch {
     this.s.strokeWeight(2);
     this.s.strokeCap(this.s.SQUARE);
 
-    const concaveCrossPointX = this.getConcaveCrossPointX(this.objectX);
-    const concaveScale = this.getConcaveScale(this.objectX, concaveCrossPointX);
-    const concaveCrossPointY = (this.s.height / 2 - this.objectY) * concaveScale + this.s.height / 2;
+    const crossPointX = this.getCrossPointX(this.objectX);
+    let crossPointY: number;
+    if (this.mirrorTypeRadio?.value() === 'concave') {
+      const scale = this.getConcaveScale(this.objectX, crossPointX);
+      crossPointY = (this.s.height / 2 - this.objectY) * scale + this.s.height / 2;
+    } else {
+      const scale = this.getConvexScale(this.objectX, crossPointX);
+      crossPointY = (this.objectY - this.s.height / 2) * scale + this.s.height / 2;
+    }
 
-    this.dashedLine(concaveCrossPointX, this.s.height / 2, concaveCrossPointX, concaveCrossPointY, 3);
-    if (this.s.height / 2 > concaveCrossPointY) {
+    this.dashedLine(crossPointX, this.s.height / 2, crossPointX, crossPointY, 3);
+    if (this.s.height / 2 > crossPointY) {
       this.s.triangle(
-        concaveCrossPointX - 4,
-        concaveCrossPointY + 7,
-        concaveCrossPointX,
-        concaveCrossPointY,
-        concaveCrossPointX + 4,
-        concaveCrossPointY + 7,
+        crossPointX - 4,
+        crossPointY + 7,
+        crossPointX,
+        crossPointY,
+        crossPointX + 4,
+        crossPointY + 7,
       );
     } else {
       this.s.triangle(
-        concaveCrossPointX + 4,
-        concaveCrossPointY - 7,
-        concaveCrossPointX,
-        concaveCrossPointY,
-        concaveCrossPointX - 4,
-        concaveCrossPointY - 7,
+        crossPointX + 4,
+        crossPointY - 7,
+        crossPointX,
+        crossPointY,
+        crossPointX - 4,
+        crossPointY - 7,
       );
     }
   }
