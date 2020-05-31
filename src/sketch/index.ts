@@ -130,7 +130,11 @@ export default class Sketch {
 
       const reflectionPointX = this.getReflectionPointX(this.objectY);
 
-      if (this.objectX > reflectionPointX + 4) {
+      let canDraw = true;
+      if (this.mirrorTypeRadio?.value() === 'concave' && this.objectX <= reflectionPointX + 4) canDraw = false;
+      else if (this.mirrorTypeRadio?.value() === 'convex' && this.objectX < this.circleX + this.circleRadius + 4) canDraw = false;
+
+      if (canDraw) {
         this.drawRays(this.objectX, this.objectY);
         this.drawImage();
       }
