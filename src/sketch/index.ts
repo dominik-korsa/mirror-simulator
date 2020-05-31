@@ -1,8 +1,10 @@
 import * as p5 from 'p5';
-// import * as utils from '../utils/index';
+import * as utils from '../utils/index';
 import { RadioElement } from '../types';
 
 type MirrorType = 'concave' | 'convex';
+
+type DragElement = 'circle-center' | 'circle-radius' | 'object';
 
 interface MirrorTypeRadioElement extends RadioElement {
   option(label: string, value: MirrorType | undefined): HTMLInputElement;
@@ -34,13 +36,19 @@ export default class Sketch {
 
   private mirrorTypeRadio: MirrorTypeRadioElement | undefined;
 
+  private objectXWidthPercent: number = 2 / 3;
+
+  private objectYWidthPercent: number = 3 / 7;
+
   private get objectX(): number {
-    return this.circleX;
+    return this.s.width * this.objectXWidthPercent;
   }
 
   private get objectY(): number {
-    return this.s.height * (1 / 2) + 32;
+    return this.s.height * this.objectYWidthPercent;
   }
+
+  private draggedElement: DragElement | null = null;
 
   constructor(s: p5) {
     this.s = s;
@@ -76,38 +84,61 @@ export default class Sketch {
       this.s.strokeWeight(1);
       this.dashedLine(0, this.s.height / 2, this.s.width, this.s.height / 2, 2);
 
-      this.s.noStroke();
-      this.s.fill(this.s.color('#000'));
-
       let focusX;
+      let circleAxisCrossX;
       if (this.mirrorTypeRadio?.value() === 'concave') {
         focusX = this.circleX - this.circleRadius / 2;
+        circleAxisCrossX = this.circleX - this.circleRadius;
       } else {
         focusX = this.circleX + this.circleRadius / 2;
+        circleAxisCrossX = this.circleX + this.circleRadius;
       }
 
-      this.s.circle(this.circleX, this.s.height / 2, 6);
-      this.s.text('O', this.circleX + 8, this.s.height / 2 - 8);
+      let dragCandidateElement: DragElement | null = null;
 
-      this.s.circle(focusX, this.s.height / 2, 6);
-      this.s.text('F', focusX + 8, this.s.height / 2 - 8);
+      if (this.isInDragRange(this.objectX, this.objectY)) dragCandidateElement = 'object';
+      else if (this.isInDragRange(circleAxisCrossX, this.s.height / 2)) dragCandidateElement = 'circle-radius';
+      else if (this.isInDragRange(this.circleX, this.s.height / 2)) dragCandidateElement = 'circle-center';
 
-      this.s.circle(
-        this.mirrorTypeRadio?.value() === 'concave' ? this.circleX - this.circleRadius : this.circleX + this.circleRadius,
-        this.s.height / 2,
-        6,
-      );
-      this.s.text(
-        'S',
-        this.mirrorTypeRadio?.value() === 'concave' ? this.circleX - this.circleRadius + 8 : this.circleX + this.circleRadius + 8,
-        this.s.height / 2 - 8,
-      );
+      if (this.draggedElement === null && dragCandidateElement !== null && this.s.mouseIsPressed) this.draggedElement = dragCandidateElement;
+      else if (this.draggedElement !== null && !this.s.mouseIsPressed) this.draggedElement = null;
 
-      this.drawConcaveRays(this.objectX, this.objectY);
+      if (this.draggedElement === 'circle-center') {
+        if (this.mirrorTypeRadio?.value() === 'concave') {
+          this.concaveCircleXWidthPercent = Math.max(0.05, Math.min(0.95, this.s.mouseX / this.s.width));
+        } else {
+          this.convexCircleXWidthPercent = Math.max(0.05, Math.min(0.95, this.s.mouseX / this.s.width));
+        }
+      } else if (this.draggedElement === 'circle-radius') {
+        this.circleRadiusWidthPercent = Math.max(0.05, (this.circleX - Math.max(0.02 * this.s.width, this.s.mouseX)) / this.s.width);
+      } else if (this.draggedElement === 'object') {
+        this.objectXWidthPercent = Math.max(0.05, Math.min(0.95, this.s.mouseX / this.s.width));
+        this.objectYWidthPercent = Math.max(0.05, Math.min(0.95, this.s.mouseY / this.s.height));
+      }
 
-      this.drawObject();
-      this.drawImage();
+      if (this.draggedElement) this.s.cursor('grabbing');
+      else if (dragCandidateElement) this.s.cursor('grab');
+      else this.s.cursor('auto');
+
+      const dragHighlightElement: DragElement | null = this.draggedElement ?? dragCandidateElement;
+
+      this.drawObject(dragHighlightElement === 'object');
+
+      const reflectionPointX = this.getConcaveReflectionPointX(this.objectY);
+
+      if (this.objectX > reflectionPointX + 4) {
+        this.drawConcaveRays(this.objectX, this.objectY);
+        this.drawImage();
+      }
+
+      this.drawPoint(this.circleX, this.s.height / 2, 'O', dragHighlightElement === 'circle-center');
+      this.drawPoint(focusX, this.s.height / 2, 'F');
+      this.drawPoint(circleAxisCrossX, this.s.height / 2, 'S', dragHighlightElement === 'circle-radius');
     };
+  }
+
+  private isInDragRange(x: number, y: number): boolean {
+    return utils.distanceSquared(x, y, this.s.mouseX, this.s.mouseY) <= 16 ** 2;
   }
 
   private drawMirror(): void {
@@ -255,8 +286,8 @@ export default class Sketch {
     this.s.line(reflectionPointX, crossPointY, x, y);
   }
 
-  private drawObject(): void {
-    this.s.fill(this.s.color('#fff'));
+  private drawObject(drag = false): void {
+    this.s.fill(drag ? this.s.color('#fff') : this.s.color('#d84315'));
     this.s.stroke(this.s.color('#d84315'));
     this.s.strokeWeight(2);
     this.s.strokeCap(this.s.SQUARE);
@@ -264,27 +295,27 @@ export default class Sketch {
     this.s.line(this.objectX, this.s.height / 2, this.objectX, this.objectY);
     if (this.s.height / 2 > this.objectY) {
       this.s.triangle(
-        this.objectX - 4,
-        this.objectY + 7,
+        this.objectX - (drag ? 8 : 4),
+        this.objectY + (drag ? 6 : 7),
         this.objectX,
-        this.objectY,
-        this.objectX + 4,
-        this.objectY + 7,
+        this.objectY - (drag ? 8 : 0),
+        this.objectX + (drag ? 8 : 4),
+        this.objectY + (drag ? 6 : 7),
       );
     } else {
       this.s.triangle(
-        this.objectX + 4,
-        this.objectY - 7,
+        this.objectX + (drag ? 8 : 4),
+        this.objectY - (drag ? 14 : 7),
         this.objectX,
-        this.objectY,
-        this.objectX - 4,
-        this.objectY - 7,
+        this.objectY + (drag ? 8 : 0),
+        this.objectX - (drag ? 4 : 4),
+        this.objectY - (drag ? 14 : 7),
       );
     }
   }
 
   private drawImage(): void {
-    this.s.fill(this.s.color('#fff'));
+    this.s.fill(this.s.color('#d84315'));
     this.s.stroke(this.s.color('#d84315'));
     this.s.strokeWeight(2);
     this.s.strokeCap(this.s.SQUARE);
@@ -312,6 +343,21 @@ export default class Sketch {
         concaveCrossPointX - 4,
         concaveCrossPointY - 7,
       );
+    }
+  }
+
+  private drawPoint(x: number, y: number, label: string, drag = false): void {
+    this.s.noStroke();
+    this.s.fill(this.s.color('#000'));
+    this.s.text(label, x + 6, y - 6);
+
+    if (drag) {
+      this.s.fill(this.s.color('#fff'));
+      this.s.stroke(this.s.color('#000'));
+      this.s.strokeWeight(2);
+      this.s.circle(x, y, 20);
+    } else {
+      this.s.circle(x, y, 8);
     }
   }
 }
