@@ -6,9 +6,10 @@ type MirrorType = 'concave' | 'convex';
 
 type DragElement = 'circle-center' | 'circle-radius' | 'object';
 
-interface MirrorTypeRadioElement extends RadioElement {
-  option(label: string, value: MirrorType | undefined): HTMLInputElement;
-  value(value: MirrorType): RadioElement;
+type MirrorTypeRadioElement = RadioElement & {
+  option(value: MirrorType, label: string): HTMLInputElement;
+  selected(value: MirrorType): MirrorTypeRadioElement;
+  selected(): MirrorType;
   value(): MirrorType;
 }
 
@@ -24,7 +25,7 @@ export default class Sketch {
   private convexCircleXWidthPercent = 1 / 4;
 
   private get circleX(): number {
-    if (this.mirrorTypeRadio?.value() === 'concave') {
+    if (this.mirrorTypeRadio?.value() ===  'concave') {
       return this.s.width * this.concaveCircleXWidthPercent;
     }
     return this.s.width * this.convexCircleXWidthPercent;
@@ -62,13 +63,14 @@ export default class Sketch {
       subtitle.id('subtitle');
 
       this.canvas = this.s.createCanvas(this.s.windowWidth - 64, this.s.windowHeight - 256);
-      this.canvas?.id('main-canvas');
+      this.canvas.id('main-canvas');
+      this.canvas.parent(title.parent());
 
       this.mirrorTypeRadio = this.s.createRadio() as MirrorTypeRadioElement;
       this.mirrorTypeRadio.id('mirror-type-radio');
-      this.mirrorTypeRadio.option('Wklęsłe', 'concave');
-      this.mirrorTypeRadio.option('Wypukłe', 'convex');
-      this.mirrorTypeRadio.value('concave');
+      this.mirrorTypeRadio.option('concave', 'Wklęsłe');
+      this.mirrorTypeRadio.option('convex', 'Wypukłe');
+      this.mirrorTypeRadio.selected('concave');
     };
 
     this.s.windowResized = (): void => {
@@ -315,7 +317,7 @@ export default class Sketch {
 
     const crossPointX = this.getCrossPointX(x);
     let crossPointY: number;
-    if (this.mirrorTypeRadio?.value() === 'concave') {
+    if (this.mirrorTypeRadio?.value() ===  'concave') {
       const scale = this.getConcaveScale(x, crossPointX);
       crossPointY = (this.s.height / 2 - y) * scale + this.s.height / 2;
     } else {

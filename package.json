@@ -1,36 +1,17 @@
 {
-  "name": "optyka-p5",
-  "version": "0.1.0",
-  "main": "src/index.ts",
+  "name": "mirror-simulator",
+  "private": true,
   "scripts": {
-    "start": "webpack-dev-server",
-    "build": "webpack -p",
-    "lint": "eslint -c .eslintrc.js --ext .ts src/**",
-    "lint:fix": "eslint -c .eslintrc.js --ext .ts src/** --fix"
-  },
-  "dependencies": {
-    "@types/node": "^14.0.5",
-    "@types/p5": "^0.9.0",
-    "p5": "^0.10.2",
-    "ts-loader": "^7.0.5",
-    "typescript": "^3.9.3"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "devDependencies": {
-    "@babel/core": "^7.0.0",
-    "@babel/preset-env": "^7.0.0",
-    "@types/copy-webpack-plugin": "^6.0.0",
-    "@typescript-eslint/eslint-plugin": "^3.0.2",
-    "@typescript-eslint/parser": "^3.0.2",
-    "babel-loader": "^8.0.0",
-    "clean-webpack-plugin": "^3.0.0",
-    "copy-webpack-plugin": "^6.0.1",
-    "eslint": "^7.1.0",
-    "eslint-config-airbnb-base": "^14.1.0",
-    "eslint-config-airbnb-typescript": "^7.2.0",
-    "eslint-plugin-import": "^2.20.2",
-    "html-webpack-plugin": "^4.3.0",
-    "webpack": "^4.41.4",
-    "webpack-cli": "^3.3.10",
-    "webpack-dev-server": "^3.10.1"
+    "@types/p5": "^1.6.0",
+    "typescript": "^5.1.3",
+    "vite": "^4.3.9"
+  },
+  "dependencies": {
+    "p5": "^1.6.0"
   }
 }

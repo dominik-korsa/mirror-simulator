@@ -1,9 +1,0 @@
-{
-  "presets": [
-    "@babel/preset-env"
-  ],
-  "compact": false,
-  "exclude": [
-    "node_modules"
-  ]
-}
